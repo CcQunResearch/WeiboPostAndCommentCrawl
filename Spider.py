@@ -106,15 +106,10 @@ def get_tweet_comment(driver):
     useful_comment_num = scroll_to_show_enough_comment(driver)
     scrolling(driver, 0)
 
-    # write_source(driver)
-
     scrolling_location = 200
     comment_index = 0
     comment_list = []
     for i in range(useful_comment_num):
-
-        # print(f'正在处理一级评论{i}')
-
         comment_view = find_active_comment_view(driver, i)
         if len(comment_view) == 0:
             while 1:
@@ -221,10 +216,6 @@ def get_tweet_comment(driver):
                     useful_second_comment_num = scroll_popup_to_show_all_comment(driver)
                     scrolling_popup(driver, 0)
 
-                    # print('useful_second_comment_num', useful_second_comment_num)
-                    #
-                    # print('begin sleep')
-                    # time.sleep(100)
                     second_scrolling_location = 200
                     comment_2_list = []
                     for i in range(useful_second_comment_num):
@@ -269,14 +260,9 @@ def get_tweet_comment(driver):
 
                     close_popup_button = driver.find_element_by_xpath(close_popup_button_xpath)
                     driver.execute_script("arguments[0].click();", close_popup_button)
-                    # time.sleep(0.5)
 
-                    # for item in comment_2_list:
-                    #     print(item)
                     comment_2_list = sorted(comment_2_list, reverse=True,
                                             key=lambda x: datetime.strptime(x['time'], "%y-%m-%d %H:%M"))
-                    # for item in comment_2_list:
-                    #     print(item)
 
                     for i, item in enumerate(comment_2_list):
                         match_res = re.match('回复@(.*?):', item['content'])
@@ -297,9 +283,6 @@ def get_tweet_comment(driver):
                                 root_comment['children'].append(item['comment id'])
 
                     comment_list += comment_2_list
-
-    # for item in comment_list:
-    #     print(item)
     return comment_list
 
 
@@ -308,6 +291,7 @@ def scroll_to_show_enough_comment(driver):
     useful_comment_num = 0
 
     check_num = 0
+    check_time = 0
     while 1:
         scrolling(driver, 100000)
 
@@ -328,10 +312,15 @@ def scroll_to_show_enough_comment(driver):
 
         check_num += 1
         if check_num == 10:
+            check_time += 1
             if check_miss(driver):
                 useful_comment_num = comment_num_limit
                 break
             check_num = 0
+
+        if check_time > 4:
+            useful_comment_num = 0
+            break
 
         # 把滚动条再拉回顶部，否则评论列表到达最底端的提示显示不出来（一直卡在刷新状态）
         scrolling(driver, 0)
@@ -427,10 +416,6 @@ def find_active_tweet_view(driver, data_index):
     return driver.find_elements_by_xpath(tweet_view_xpath)
 
 
-# def check_display(comment_view):
-#     return comment_view.get_attribute('data-active')
-
-
 def check_second_display(comment_view):
     return comment_view.find_element_by_xpath('./..').get_attribute(
         'style') != 'transform: translateY(-9999px); z-index: -1;'
@@ -473,9 +458,6 @@ def crawl_theme(driver, crawl_num, theme, theme_url):
         WebDriverWait(driver, 20).until(lambda driver: driver.find_elements_by_xpath(
             '//div[@class="vue-recycle-scroller__item-view"]/div[@data-index="0"]'))
 
-        # scroll_to_show_enough_tweet(driver)
-        # scrolling(driver, 0)
-
         tweet_url_list = []
         scrolling_location = 200
 
@@ -505,7 +487,6 @@ def crawl_theme(driver, crawl_num, theme, theme_url):
                 write_tweet(tweet, filepath)
 
 
-
 if __name__ == '__main__':
     driver = login()
 
@@ -519,7 +500,11 @@ if __name__ == '__main__':
     # test_url = 'https://weibo.com/5943043633/LlCZgychP'
     # crawl_tweet(driver, test_url)
 
-    crawl_num = 50000
-    theme = 'No Theme'
-    theme_url = 'https://weibo.com/hot/weibo/102803'
-    crawl_theme(driver, crawl_num, theme, theme_url)
+    while 1:
+        try:
+            crawl_num = 50000
+            theme = 'No Theme'
+            theme_url = 'https://weibo.com/hot/weibo/102803'
+            crawl_theme(driver, crawl_num, theme, theme_url)
+        except Exception:
+            continue

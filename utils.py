@@ -17,5 +17,5 @@ def write_source(driver):
 
 
 def write_tweet(tweet, filepath):
-    with open(filepath, 'w',encoding='utf-8') as file_obj:
+    with open(filepath, 'w', encoding='utf-8') as file_obj:
         json.dump(tweet, file_obj, indent=4, ensure_ascii=False)
