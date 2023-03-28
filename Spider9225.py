@@ -21,7 +21,7 @@ username = '13698603020'
 password = '5039795891..'
 
 
-tweet_num_limit = 10  # 一次提取的帖子url的数量
+tweet_num_limit = 50  # 一次提取的帖子url的数量
 comment_num_limit = 600 # 截取的一级评论限制数量
 second_comment_num_limit = 600
 
@@ -66,7 +66,7 @@ def login():
     options = ChromeOptions()
     chrome_options = Options()
     options.add_experimental_option('excludeSwitches', ['enable-automation'])
-    chrome_options.add_experimental_option("debuggerAddress", "127.0.0.1:9224")
+    chrome_options.add_experimental_option("debuggerAddress", "127.0.0.1:9225")
     driver = webdriver.Chrome(driver_path, options=options, chrome_options=chrome_options)
 
     return driver

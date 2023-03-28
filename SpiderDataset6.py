@@ -1,28 +1,33 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2022/3/21 10:10
+# @Time    : 2022/6/23 10:50
 # @Author  : CcQun
 # @Email   : 13698603020@163.com
-# @File    : Spider.py
+# @File    : SpiderDataset2.py
 # @Software: PyCharm
 # @Note    :
+import codecs
+import csv
 from utils import write_source, write_tweet
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver import ChromeOptions
 import time
 from datetime import datetime
 import re
 import os
+import jsonlines
+
+realpath = 'real_release_all.json'
+fakepath = 'fake_release_all.json'
 
 username = '13698603020'
 password = '5039795891..'
 
-
-tweet_num_limit = 10  # 一次提取的帖子url的数量
-comment_num_limit = 600 # 截取的一级评论限制数量
+# 截取的一级评论限制数量
+tweet_num_limit = 50  # 一次提取的帖子url的数量
+comment_num_limit = 600
 second_comment_num_limit = 600
 
 driver_path = r'C:\Program Files\Google\Chrome\Application\chromedriver.exe'
@@ -31,7 +36,7 @@ wb_login_url = 'https://weibo.com/login.php'
 
 content_xpath = '//div[@class="detail_wbtext_4CRf9"]'  # 帖子正文
 tweet_time_xpath = '//a[@class="head-info_time_6sFQg"]'  # 帖子发布时间
-comment_num_xpath = '//div[@class="woo-box-item-flex toolbar_item_1ky_D toolbar_cursor_34j5V"]/div/span[@class="toolbar_num_JXZul"]'  # 评论数量
+comment_num_xpath = '//div[@class="woo-box-item-flex toolbar_item_1ky_D"]/div/span[@class="toolbar_num_JXZul"]'  # 评论数量
 comment_list_bottom_xpath = '//div[@class="Bottom_text_1kFLe"]'  # 评论列表页面最底部
 popup_comment_list_bottom_xpath = '//div[@class="woo-box-flex woo-box-alignCenter woo-box-justifyCenter woo-modal-wrap ReplyModal_wrap_2j1bg"]//div[@class="Bottom_text_1kFLe"]'  # 弹窗评论列表页面最底部
 close_popup_button_xpath = '//div[@class="woo-box-flex woo-box-alignCenter woo-box-justifyCenter woo-modal-wrap ReplyModal_wrap_2j1bg"]//div[@class="wbpro-layer-tit-opt woo-box-flex woo-box-alignCenter woo-box-justifyCenter"]/i'
@@ -42,32 +47,26 @@ close_popup_button_xpath = '//div[@class="woo-box-flex woo-box-alignCenter woo-b
 
 # 爬取内容之前一定要登录
 def login():
-    # option = ChromeOptions()
-    # option.add_experimental_option('excludeSwitches', ['enable-automation'])
-    # driver = webdriver.Chrome(driver_path, options=option)
-    # driver.maximize_window()
-    #
-    # driver.get(wb_login_url)
-    # print('正在打开微博登录页面......')
-    #
-    # WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.ID, 'loginname')))
-    # print("成功打开微博登录页面")
-    #
-    # driver.find_element_by_id("loginname").send_keys(username)
-    # driver.find_element_by_xpath("//div[@class='info_list password']/div/input").send_keys(password)
-    # print("成功填写账号")
-    #
-    # signal = input("手动点击登录按钮并验证以后输入ok:")
-    # if signal != 'OK' and signal != 'ok':
-    #     print("输入ok!!!")
-    # else:
-    #     print("成功登录")
+    option = ChromeOptions()
+    option.add_experimental_option('excludeSwitches', ['enable-automation'])
+    driver = webdriver.Chrome(driver_path, options=option)
+    driver.maximize_window()
 
-    options = ChromeOptions()
-    chrome_options = Options()
-    options.add_experimental_option('excludeSwitches', ['enable-automation'])
-    chrome_options.add_experimental_option("debuggerAddress", "127.0.0.1:9224")
-    driver = webdriver.Chrome(driver_path, options=options, chrome_options=chrome_options)
+    driver.get(wb_login_url)
+    print('正在打开微博登录页面......')
+
+    WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.ID, 'loginname')))
+    print("成功打开微博登录页面")
+
+    driver.find_element_by_id("loginname").send_keys(username)
+    driver.find_element_by_xpath("//div[@class='info_list password']/div/input").send_keys(password)
+    print("成功填写账号")
+
+    signal = input("手动点击登录按钮并验证以后输入ok:")
+    if signal != 'OK' and signal != 'ok':
+        print("输入ok!!!")
+    else:
+        print("成功登录")
 
     return driver
 
@@ -109,6 +108,9 @@ def get_tweet_comment(driver):
         return []
     if len(tip) != 0 and tip[-1].get_attribute('innerText').strip() == '暂无评论，发表你的评论或看看推荐吧':
         return []
+
+    WebDriverWait(driver, 5).until(lambda driver: driver.find_elements_by_xpath(
+        '//div[@class="RepostCommentList_mar1_3VHkS"]//div[@class="vue-recycle-scroller__item-view"]/div[@data-index="0" and @data-active="true"]'))
 
     useful_comment_num = scroll_to_show_enough_comment(driver)
     scrolling(driver, 0)
@@ -431,13 +433,15 @@ def check_second_display(comment_view):
 # tweet_url是一个帖子的内容网页，比如https://www.weibo.com/1883881851/LkJwDqkmO
 def crawl_tweet(driver, tweet_url):
     driver.get(tweet_url)
-    WebDriverWait(driver, 20).until(lambda driver: driver.find_elements_by_xpath(content_xpath))
+    WebDriverWait(driver, 2).until(lambda driver: driver.find_elements_by_xpath(content_xpath))
     time.sleep(0.3)
 
     tweet_dict = get_tweet_content(driver)
     user_id, tweet_id = get_user_tweet_id(tweet_url)
     tweet_dict['user id'] = user_id
     tweet_dict['tweet id'] = tweet_id
+
+    # print(tweet_dict)
 
     comment_list = get_tweet_comment(driver)
 
@@ -451,65 +455,35 @@ def crawl_tweet(driver, tweet_url):
     return tweet
 
 
-def crawl_theme(driver, crawl_num, theme, theme_url):
-    dirpath = os.path.join('.', 'Data', theme)
-    if not os.path.exists(dirpath):
-        os.makedirs(dirpath)
-
-    count_num = 0
-
-    while count_num < crawl_num:
-        driver.get(theme_url)
-        WebDriverWait(driver, 20).until(lambda driver: driver.find_elements_by_xpath(
-            '//div[@class="vue-recycle-scroller__item-view"]/div[@data-index="0"]'))
-
-        tweet_url_list = []
-        scrolling_location = 200
-
-        for i in range(tweet_num_limit):
-            tweet_view = find_active_tweet_view(driver, i)
-            if len(tweet_view) == 0:
-                while 1:
-                    scrolling(driver, scrolling_location)
-                    scrolling_location += 200
-
-                    find_tweet = find_active_tweet_view(driver, i)
-                    if len(find_tweet) != 0:
-                        break
-
-                    time.sleep(0.5)
-
-            tweet_url_xpath = f'//div[@class="vue-recycle-scroller__item-view"]/div[@data-index="{i}"]//a[@class="head-info_time_6sFQg"]'
-            tweet_url = driver.find_element_by_xpath(tweet_url_xpath)
-            tweet_url_list.append(tweet_url.get_attribute('href'))
-
-        for tweet_url in tweet_url_list:
-            count_num += 1
-            print(count_num, tweet_url)
-            tweet = crawl_tweet(driver, tweet_url)
-            if tweet != None:
-                filepath = os.path.join(dirpath, f'{tweet["source"]["tweet id"]}.json')
-                write_tweet(tweet, filepath)
-
-
 if __name__ == '__main__':
+
     driver = login()
 
-    # test_url = 'https://www.weibo.com/5514146941/LkKeugQjK'
-    # test_url = 'https://www.weibo.com/2323731761/LkWIYgtKP'  # 长文
-    # test_url = 'https://weibo.com/6037957557/LlbsskVDM'
-    # test_url = 'https://weibo.com/1749127163/Llkm64HXu'
-    # test_url = 'https://weibo.com/1618051664/LluiWoHpX'
-    # test_url = 'https://weibo.com/2757394263/LlalQrMfM'
-    # test_url = 'https://weibo.com/2656274875/LlkmXi8IG'
-    # test_url = 'https://weibo.com/5943043633/LlCZgychP'
-    # crawl_tweet(driver, test_url)
+    import jsonlines
+    file = r'D:\Project\Research\WeiboPostAndCommentCrawl\rumors_v170613.json'
+    with jsonlines.open(file) as reader:
+        conti = True
+        for obj in reader:
+            if obj["rumorCode"] == 'K1CaN7gNc7Koh':
+                conti = False
+            if conti:
+                continue
 
-    while 1:
-        try:
-            crawl_num = 50000
-            theme = 'No Theme Long'
-            theme_url = 'https://weibo.com/hot/weibo/102803'
-            crawl_theme(driver, crawl_num, theme, theme_url)
-        except Exception:
-            continue
+            url = f'https://service.account.weibo.com/show?rid={obj["rumorCode"]}'
+            driver.get(url)
+            ori_text = driver.find_elements_by_xpath(
+                '//a[@suda-uatrack="key=tblog_service_account&value=original_text"]')
+            if len(ori_text) != 0:
+                source_url = ori_text[0].get_attribute('href')
+                try:
+                    tweet = crawl_tweet(driver, source_url)
+                    tweet['source']['label'] = 1
+                    # if tweet != None and len(tweet['comment']) >= 5:
+                    filepath = os.path.join('Back', 'rumor', f'{tweet["source"]["tweet id"]}.json')
+                    write_tweet(tweet, filepath)
+                    print(obj["rumorCode"])
+                    time.sleep(0.5)
+                except Exception:
+                    continue
+
+
