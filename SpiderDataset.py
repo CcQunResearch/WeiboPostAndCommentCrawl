@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2022/6/15 10:39
-# @Author  : CcQun
-# @Email   : 13698603020@163.com
+# @Time    :
+# @Author  :
+# @Email   :
 # @File    : SpiderDataset.py
 # @Software: PyCharm
 # @Note    :‘’

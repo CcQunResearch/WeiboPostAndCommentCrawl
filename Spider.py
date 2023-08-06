@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2022/3/21 10:10
-# @Author  : CcQun
-# @Email   : 13698603020@163.com
+# @Time    :
+# @Author  :
+# @Email   :
 # @File    : Spider.py
 # @Software: PyCharm
 # @Note    :
