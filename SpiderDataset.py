@@ -20,8 +20,8 @@ import os
 
 dataset_csv_path = 'train.csv'
 
-username = '13698603020'
-password = '5039795891..'
+username = ''
+password = ''
 
 # 截取的一级评论限制数量
 tweet_num_limit = 50  # 一次提取的帖子url的数量

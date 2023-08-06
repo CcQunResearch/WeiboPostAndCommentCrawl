@@ -22,8 +22,8 @@ import jsonlines
 realpath = 'real_release_all.json'
 fakepath = 'fake_release_all.json'
 
-username = '13698603020'
-password = '5039795891..'
+username = ''
+password = ''
 
 # 截取的一级评论限制数量
 tweet_num_limit = 50  # 一次提取的帖子url的数量
